@@ -1,0 +1,1 @@
+# minima-plymouth-theme
