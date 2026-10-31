@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=minima
+Description=Minimalist Gruvbox boot theme with horizontal progress bar
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/minima/assets
+ScriptFile=/usr/share/plymouth/themes/minima/minima.script

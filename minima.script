@@ -1,0 +1,260 @@
+Window.SetBackgroundTopColor(29.0 / 255.0, 32.0 / 255.0, 33.0 / 255.0);
+Window.SetBackgroundBottomColor(29.0 / 255.0, 32.0 / 255.0, 33.0 / 255.0);
+
+screen.w = Window.GetWidth();
+screen.h = Window.GetHeight();
+screen.x = Window.GetX();
+screen.y = Window.GetY();
+
+is_hidpi = 0;
+if (screen.h >= 1440)
+  is_hidpi = 1;
+
+if (is_hidpi)
+  logo_image = Image("logo@2x.png");
+else
+  logo_image = Image("logo.png");
+
+logo_sprite = Sprite(logo_image);
+logo_x = screen.x + screen.w / 2 - logo_image.GetWidth() / 2;
+logo_y = screen.y + screen.h * 0.42 - logo_image.GetHeight() / 2;
+logo_sprite.SetPosition(logo_x, logo_y, 1);
+logo_sprite.SetOpacity(0);
+
+bar_track_image = Image("bar_track.png");
+bar_beam_original = Image("bar_beam.png");
+bar_fill_original = Image("bar_fill.png");
+
+if (is_hidpi)
+  {
+    bar_track_image = bar_track_image.Scale(bar_track_image.GetWidth() * 1.35, bar_track_image.GetHeight() * 1.35);
+    bar_beam_original = bar_beam_original.Scale(bar_beam_original.GetWidth() * 1.35, bar_beam_original.GetHeight() * 1.35);
+    bar_fill_original = bar_fill_original.Scale(bar_fill_original.GetWidth() * 1.35, bar_fill_original.GetHeight() * 1.35);
+    bar_offset_y = 52;
+  }
+else
+  {
+    bar_offset_y = 38;
+  }
+
+bar_w = bar_track_image.GetWidth();
+bar_h = bar_track_image.GetHeight();
+bar_x = screen.x + screen.w / 2 - bar_w / 2;
+bar_y = logo_y + logo_image.GetHeight() + bar_offset_y;
+
+beam_max_w = bar_beam_original.GetWidth();
+total_dist = bar_w + beam_max_w;
+
+bar_track_sprite = Sprite(bar_track_image);
+bar_track_sprite.SetPosition(bar_x, bar_y, 2);
+bar_track_sprite.SetOpacity(0);
+
+bar_beam_sprite = Sprite();
+bar_beam_sprite.SetPosition(bar_x, bar_y, 3);
+bar_beam_sprite.SetOpacity(0);
+
+bar_fill_sprite = Sprite();
+bar_fill_sprite.SetPosition(bar_x, bar_y, 3);
+bar_fill_sprite.SetOpacity(0);
+
+fun dialog_setup ()
+  {
+    dialog.capsule_image = Image("input_capsule.png");
+    dialog.lock_image = Image("lock.png");
+    dialog.bullet_image = Image("bullet.png");
+
+    if (is_hidpi)
+      {
+        dialog.capsule_image = dialog.capsule_image.Scale(dialog.capsule_image.GetWidth() * 1.3, dialog.capsule_image.GetHeight() * 1.3);
+        dialog.lock_image = dialog.lock_image.Scale(dialog.lock_image.GetWidth() * 1.3, dialog.lock_image.GetHeight() * 1.3);
+        dialog.bullet_image = dialog.bullet_image.Scale(dialog.bullet_image.GetWidth() * 1.3, dialog.bullet_image.GetHeight() * 1.3);
+        dialog.lock_pad_x = 22;
+        dialog.bullet_spacing = 16;
+      }
+    else
+      {
+        dialog.lock_pad_x = 18;
+        dialog.bullet_spacing = 14;
+      }
+
+    dialog.capsule_w = dialog.capsule_image.GetWidth();
+    dialog.capsule_h = dialog.capsule_image.GetHeight();
+    dialog.capsule_x = screen.x + screen.w / 2 - dialog.capsule_w / 2;
+    dialog.capsule_y = logo_y + logo_image.GetHeight() + 38;
+
+    dialog.capsule_sprite = Sprite(dialog.capsule_image);
+    dialog.capsule_sprite.SetPosition(dialog.capsule_x, dialog.capsule_y, 10);
+    dialog.capsule_sprite.SetOpacity(0);
+
+    dialog.lock_w = dialog.lock_image.GetWidth();
+    dialog.lock_h = dialog.lock_image.GetHeight();
+    dialog.lock_x = dialog.capsule_x + dialog.lock_pad_x;
+    dialog.lock_y = dialog.capsule_y + dialog.capsule_h / 2 - dialog.lock_h / 2;
+
+    dialog.lock_sprite = Sprite(dialog.lock_image);
+    dialog.lock_sprite.SetPosition(dialog.lock_x, dialog.lock_y, 11);
+    dialog.lock_sprite.SetOpacity(0);
+
+    dialog.bullet_start_x = dialog.lock_x + dialog.lock_w + 14;
+    dialog.bullet_y = dialog.capsule_y + dialog.capsule_h / 2 - dialog.bullet_image.GetHeight() / 2;
+  }
+
+dialog_setup();
+
+tick = 0;
+status = "normal";
+has_progress = 0;
+cycle_ticks = 170; # ~2.8s at 60Hz
+
+fun refresh_callback ()
+  {
+    tick++;
+
+    fade = tick / 30.0;
+    if (fade > 1.0)
+      fade = 1.0;
+
+    mode = Plymouth.GetMode();
+
+    if (mode == "shutdown" || mode == "reboot")
+      {
+        logo_sprite.SetOpacity(fade * 0.85);
+        bar_track_sprite.SetOpacity(0);
+        bar_beam_sprite.SetOpacity(0);
+        bar_fill_sprite.SetOpacity(0);
+      }
+    else
+      {
+        logo_sprite.SetOpacity(fade);
+
+        if (status == "normal")
+          {
+            bar_track_sprite.SetOpacity(fade);
+
+            if (has_progress == 0)
+              {
+                cycle_pos = (tick % cycle_ticks) / cycle_ticks;
+                d = Math.Int(total_dist * cycle_pos);
+
+                if (d < beam_max_w)
+                  {
+                    cur_w = d;
+                    if (cur_w < 1) cur_w = 1;
+                    cur_x = bar_x;
+                  }
+                else
+                  {
+                    if (d <= bar_w)
+                      {
+                        cur_w = beam_max_w;
+                        cur_x = bar_x + (d - beam_max_w);
+                      }
+                    else
+                      {
+                        cur_w = total_dist - d;
+                        if (cur_w < 1) cur_w = 1;
+                        cur_x = bar_x + bar_w - cur_w;
+                      }
+                  }
+
+                scaled_beam = bar_beam_original.Scale(cur_w, bar_h);
+                bar_beam_sprite.SetImage(scaled_beam);
+                bar_beam_sprite.SetPosition(cur_x, bar_y, 3);
+                bar_beam_sprite.SetOpacity(fade);
+                bar_fill_sprite.SetOpacity(0);
+              }
+            else
+              {
+                bar_beam_sprite.SetOpacity(0);
+                bar_fill_sprite.SetOpacity(fade);
+              }
+          }
+        else
+          {
+            bar_track_sprite.SetOpacity(0);
+            bar_beam_sprite.SetOpacity(0);
+            bar_fill_sprite.SetOpacity(0);
+          }
+      }
+  }
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+fun boot_progress_callback (duration, progress)
+  {
+    has_progress = 1;
+    fill_width = Math.Int(bar_w * progress);
+    if (fill_width < 1)
+      fill_width = 1;
+    if (fill_width > bar_w)
+      fill_width = bar_w;
+
+    scaled_fill = bar_fill_original.Scale(fill_width, bar_fill_original.GetHeight());
+    bar_fill_sprite.SetImage(scaled_fill);
+  }
+
+Plymouth.SetBootProgressFunction(boot_progress_callback);
+
+fun display_normal_callback ()
+  {
+    status = "normal";
+    dialog.capsule_sprite.SetOpacity(0);
+    dialog.lock_sprite.SetOpacity(0);
+
+    for (i = 0; dialog.bullet[i]; i++)
+      dialog.bullet[i].sprite.SetOpacity(0);
+  }
+
+fun display_password_callback (prompt, bullets)
+  {
+    status = "password";
+    dialog.capsule_sprite.SetOpacity(1);
+    dialog.lock_sprite.SetOpacity(1);
+
+    for (i = 0; dialog.bullet[i] || i < bullets; i++)
+      {
+        if (!dialog.bullet[i])
+          {
+            dialog.bullet[i].sprite = Sprite(dialog.bullet_image);
+            bx = dialog.bullet_start_x + i * dialog.bullet_spacing;
+            dialog.bullet[i].sprite.SetPosition(bx, dialog.bullet_y, 12);
+          }
+
+        if (i < bullets)
+          dialog.bullet[i].sprite.SetOpacity(1);
+        else
+          dialog.bullet[i].sprite.SetOpacity(0);
+      }
+  }
+
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+
+message_sprite = Sprite();
+
+fun message_callback (text)
+  {
+    msg_image = Image.Text(text, 0.66, 0.60, 0.52);
+    message_sprite.SetImage(msg_image);
+    msg_x = screen.x + screen.w / 2 - msg_image.GetWidth() / 2;
+    msg_y = screen.y + screen.h * 0.90;
+    message_sprite.SetPosition(msg_x, msg_y, 10);
+    message_sprite.SetOpacity(1);
+  }
+
+Plymouth.SetMessageFunction(message_callback);
+
+fun quit_callback ()
+  {
+    logo_sprite.SetOpacity(0);
+    bar_track_sprite.SetOpacity(0);
+    bar_beam_sprite.SetOpacity(0);
+    bar_fill_sprite.SetOpacity(0);
+    dialog.capsule_sprite.SetOpacity(0);
+    dialog.lock_sprite.SetOpacity(0);
+    for (i = 0; dialog.bullet[i]; i++)
+      dialog.bullet[i].sprite.SetOpacity(0);
+    message_sprite.SetOpacity(0);
+  }
+
+Plymouth.SetQuitFunction(quit_callback);
